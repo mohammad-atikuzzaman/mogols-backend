@@ -9,6 +9,10 @@ const connectDB = async () => {
       throw new Error("MONGO_URI is not defined");
     }
 
+    if (mongoose.connection.readyState >= 1) {
+      return;
+    }
+
     const conn = await mongoose.connect(uri, {
       dbName,
     });
@@ -16,7 +20,8 @@ const connectDB = async () => {
     console.log(`MongoDB Connected: ${conn.connection.host}`);
   } catch (error) {
     console.error(`MongoDB Connection Error: ${error.message}`);
-    process.exit(1);
+    // process.exit(1); // Removed for serverless
+    throw error;
   }
 };
 

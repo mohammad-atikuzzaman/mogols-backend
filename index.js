@@ -11,8 +11,20 @@ const app = express();
 const cookieParser = require("cookie-parser");
 
 app.use(cookieParser());
+
+const allowedOrigins = ['http://localhost:3000', 'http://127.0.0.1:3000', 'https://mogols.vercel.app'];
+
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://127.0.0.1:3000', 'https://mogols.vercel.app'],
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1 || origin.endsWith('.vercel.app')) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
 }));
 app.use(express.json());
@@ -27,6 +39,10 @@ app.get("/", (req, res) => {
   res.send("Mogols Backend is running!");
 });
 
-app.listen(port, () => {
-  console.log(`Server started on port ${port}`);
-});
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(port, () => {
+    console.log(`Server started on port ${port}`);
+  });
+}
+
+module.exports = app;
