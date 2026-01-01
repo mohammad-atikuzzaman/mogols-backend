@@ -1,21 +1,57 @@
 const Product = require("../models/Product");
 const Order = require("../models/Order");
+const Fuse = require('fuse.js');
+
+const NodeCache = require("node-cache");
+const cache = new NodeCache({ stdTTL: 300 }); // Cache for 5 minutes
+
 
 // @desc    Fetch all products
 // @route   GET /api/products
 // @access  Public
 const getProducts = async (req, res) => {
     try {
-        const keyword = req.query.keyword
-            ? {
-                name: {
-                    $regex: req.query.keyword,
-                    $options: "i",
-                },
-            }
-            : {};
+        const keyword = req.query.keyword || '';
+        const category = req.query.category || '';
 
-        const products = await Product.find({ ...keyword });
+        // Optimization: If simple category filter without search, use DB index
+        if (!keyword && category) {
+            const products = await Product.find({ category: { $regex: category, $options: 'i' } });
+            return res.json(products);
+        }
+
+        // Optimization: If no search and no category, return all (cached)
+        if (!keyword && !category) {
+            const cacheKey = 'products_all';
+            const cachedProducts = cache.get(cacheKey);
+            if (cachedProducts) return res.json(cachedProducts);
+
+            const products = await Product.find({});
+            cache.set(cacheKey, products);
+            return res.json(products);
+        }
+
+        // If fuzzy search is needed (keyword is present)
+        // We fetch all products (or a wide subset) and use Fuse.js
+        // For a small catalog (<10k items), this is fine.
+        let products = await Product.find({}).lean();
+
+        if (keyword) {
+            const fuse = new Fuse(products, {
+                keys: ['name', 'brand', 'category', 'description'],
+                threshold: 0.3, // 0.0 = perfect match, 1.0 = match anything. 0.3 allows small typos ("heney")
+                includeScore: true
+            });
+
+            const result = fuse.search(keyword);
+            products = result.map(r => r.item);
+        }
+
+        // Apply category filter in-memory if both keyword and category are present
+        if (category) {
+            products = products.filter(p => p.category.toLowerCase() === category.toLowerCase());
+        }
+
         res.json(products);
     } catch (error) {
         console.error(error);
@@ -50,6 +86,8 @@ const deleteProduct = async (req, res) => {
 
         if (product) {
             await product.deleteOne(); // Use deleteOne instead of remove in recent Mongoose
+            // Invalidate cache
+            cache.del('products_all');
             res.json({ message: "Product removed" });
         } else {
             res.status(404).json({ message: "Product not found" });
@@ -80,6 +118,7 @@ const createProduct = async (req, res) => {
         });
 
         const createdProduct = await product.save();
+        cache.del('products_all');
         res.status(201).json(createdProduct);
     } catch (error) {
         console.error(error);
@@ -114,6 +153,7 @@ const updateProduct = async (req, res) => {
             product.countInStock = countInStock || product.countInStock;
 
             const updatedProduct = await product.save();
+            cache.del('products_all');
             res.json(updatedProduct);
         } else {
             res.status(404).json({ message: "Product not found" });

@@ -71,6 +71,9 @@ const productSchema = mongoose.Schema(
     }
 );
 
+// Indexing to optimize performance for search
+productSchema.index({ name: 'text', category: 'text' });
+
 const Product = mongoose.model("Product", productSchema);
 
 module.exports = Product;
