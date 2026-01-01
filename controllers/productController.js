@@ -52,6 +52,8 @@ const getProducts = async (req, res) => {
             products = products.filter(p => p.category.toLowerCase() === category.toLowerCase());
         }
 
+        // Set cache headers for browser caching
+        res.set('Cache-Control', 'public, max-age=300, s-maxage=600, stale-while-revalidate=60');
         res.json(products);
     } catch (error) {
         console.error(error);
@@ -67,6 +69,8 @@ const getProductById = async (req, res) => {
         const product = await Product.findById(req.params.id).populate("reviews.user", "name email");
 
         if (product) {
+            // Set cache headers for browser caching
+            res.set('Cache-Control', 'public, max-age=300, s-maxage=600, stale-while-revalidate=60');
             res.json(product);
         } else {
             res.status(404).json({ message: "Product not found" });
@@ -233,6 +237,8 @@ const getRelatedProducts = async (req, res) => {
                 category: product.category
             }).limit(4);
 
+            // Set cache headers for browser caching
+            res.set('Cache-Control', 'public, max-age=300, s-maxage=600, stale-while-revalidate=60');
             res.json(related);
         } else {
             res.status(404).json({ message: "Product not found" });
