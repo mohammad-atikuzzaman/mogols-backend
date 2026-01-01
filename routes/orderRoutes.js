@@ -7,6 +7,7 @@ const {
     updateOrderToDelivered,
     getMyOrders,
     getOrders,
+    checkOrderPurchase,
 } = require("../controllers/orderController");
 const { protect, authorize } = require("../middleware/authMiddleware");
 
@@ -17,6 +18,7 @@ router
     .get(protect, authorize("admin"), getOrders);
 
 router.route("/myorders").get(protect, getMyOrders);
+router.route("/check-purchase/:productId").get(protect, checkOrderPurchase);
 
 router.route("/:id").get(protect, getOrderById);
 

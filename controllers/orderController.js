@@ -137,6 +137,30 @@ const getOrders = async (req, res) => {
     }
 };
 
+// @desc    Check if user has purchased product
+// @route   GET /api/orders/check-purchase/:productId
+// @access  Private
+const checkOrderPurchase = async (req, res) => {
+    try {
+        const orders = await Order.find({ user: req.user._id, isPaid: true });
+
+        const hasPurchased = orders.some(order =>
+            order.orderItems.some(item =>
+                item.product.toString() === req.params.productId
+            )
+        );
+
+        if (hasPurchased) {
+            res.json({ canReview: true });
+        } else {
+            res.json({ canReview: false });
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Server Error" });
+    }
+};
+
 module.exports = {
     addOrderItems,
     getOrderById,
@@ -144,4 +168,5 @@ module.exports = {
     updateOrderToDelivered,
     getMyOrders,
     getOrders,
+    checkOrderPurchase,
 };

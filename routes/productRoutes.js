@@ -7,6 +7,7 @@ const {
     updateProduct,
     createProduct,
     createProductReview,
+    getRelatedProducts,
 } = require("../controllers/productController");
 const { protect, authorize } = require("../middleware/authMiddleware");
 
@@ -17,6 +18,7 @@ router
     .post(protect, authorize("admin", "seller"), createProduct);
 
 router.route("/:id/reviews").post(protect, createProductReview);
+router.route("/:id/related").get(getRelatedProducts);
 
 router
     .route("/:id")
